@@ -1,28 +1,28 @@
-package interval
+package tsdb
 
 import (
 	"testing"
 	"time"
 
-	"github.com/grafana/grafana/pkg/components/simplejson"
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana/pkg/models"
-	"github.com/grafana/grafana/pkg/plugins"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestIntervalCalculator_Calculate(t *testing.T) {
 	calculator := NewCalculator(CalculatorOptions{})
 
+	timeNow := time.Now()
+
 	testCases := []struct {
 		name      string
-		timeRange plugins.DataTimeRange
+		timeRange backend.TimeRange
 		expected  string
 	}{
-		{"from 5m to now", plugins.NewDataTimeRange("5m", "now"), "200ms"},
-		{"from 15m to now", plugins.NewDataTimeRange("15m", "now"), "500ms"},
-		{"from 30m to now", plugins.NewDataTimeRange("30m", "now"), "1s"},
-		{"from 1h to now", plugins.NewDataTimeRange("1h", "now"), "2s"},
+		{"from 5m to now", backend.TimeRange{From: timeNow, To: timeNow.Add(5 * time.Minute)}, "200ms"},
+		{"from 15m to now", backend.TimeRange{From: timeNow, To: timeNow.Add(15 * time.Minute)}, "500ms"},
+		{"from 30m to now", backend.TimeRange{From: timeNow, To: timeNow.Add(30 * time.Minute)}, "1s"},
+		{"from 1h to now", backend.TimeRange{From: timeNow, To: timeNow.Add(60 * time.Minute)}, "2s"},
 	}
 
 	for _, tc := range testCases {
@@ -71,31 +71,26 @@ func TestFormatDuration(t *testing.T) {
 }
 
 func TestGetIntervalFrom(t *testing.T) {
-	dsJSON, err := simplejson.NewJson([]byte(`{"timeInterval": "60s"}`))
-	require.NoError(t, err)
 	testCases := []struct {
 		name            string
 		dsInfo          *models.DataSource
-		queryModel      string
+		queryInterval   string
+		queryIntervalMs int64
 		defaultInterval time.Duration
 		expected        time.Duration
 	}{
-		{"45s", nil, `{"interval": "45s"}`, time.Second * 15, time.Second * 45},
-		{"45", nil, `{"interval": "45"}`, time.Second * 15, time.Second * 45},
-		{"2m", nil, `{"interval": "2m"}`, time.Second * 15, time.Minute * 2},
-		{"intervalMs", nil, `{"intervalMs": 45000}`, time.Second * 15, time.Second * 45},
-		{"intervalMs sub-seconds", nil, `{"intervalMs": 45200}`, time.Second * 15, time.Millisecond * 45200},
-		{"dsInfo timeInterval", &models.DataSource{
-			JsonData: dsJSON,
-		}, `{}`, time.Second * 15, time.Second * 60},
-		{"defaultInterval when interval empty", nil, `{"interval": ""}`, time.Second * 15, time.Second * 15},
-		{"defaultInterval when intervalMs 0", nil, `{"intervalMs": 0}`, time.Second * 15, time.Second * 15},
+		{"45s", nil, "45s", 0, time.Second * 15, time.Second * 45},
+		{"45", nil, "45", 0, time.Second * 15, time.Second * 45},
+		{"2m", nil, "2m", 0, time.Second * 15, time.Minute * 2},
+		{"intervalMs", nil, "", 45000, time.Second * 15, time.Second * 45},
+		{"intervalMs sub-seconds", nil, "", 45200, time.Second * 15, time.Millisecond * 45200},
+		{"defaultInterval when interval empty", nil, "", 0, time.Second * 15, time.Second * 15},
+		{"defaultInterval when intervalMs 0", nil, "", 0, time.Second * 15, time.Second * 15},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			js, _ := simplejson.NewJson([]byte(tc.queryModel))
-			actual, err := GetIntervalFrom(tc.dsInfo, js, tc.defaultInterval)
+			actual, err := GetIntervalFrom(tc.queryInterval, "", tc.queryIntervalMs, tc.defaultInterval)
 			assert.Nil(t, err)
 			assert.Equal(t, tc.expected, actual)
 		})
