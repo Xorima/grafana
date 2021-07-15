@@ -16,8 +16,6 @@ import (
 	"github.com/grafana/grafana/pkg/tsdb/elasticsearch"
 	"github.com/grafana/grafana/pkg/tsdb/influxdb"
 	"github.com/grafana/grafana/pkg/tsdb/loki"
-	"github.com/grafana/grafana/pkg/tsdb/mssql"
-	"github.com/grafana/grafana/pkg/tsdb/mysql"
 	"github.com/grafana/grafana/pkg/tsdb/postgres"
 	"github.com/grafana/grafana/pkg/tsdb/prometheus"
 	"github.com/grafana/grafana/pkg/tsdb/tempo"
@@ -58,8 +56,6 @@ type Service struct {
 func (s *Service) Init() error {
 	s.registry["prometheus"] = prometheus.New(s.HTTPClientProvider)
 	s.registry["influxdb"] = influxdb.New(s.HTTPClientProvider)
-	s.registry["mssql"] = mssql.NewExecutor
-	s.registry["mysql"] = mysql.New(s.HTTPClientProvider)
 	s.registry["elasticsearch"] = elasticsearch.New(s.HTTPClientProvider)
 	s.registry["stackdriver"] = s.CloudMonitoringService.NewExecutor
 	s.registry["loki"] = loki.New(s.HTTPClientProvider)
